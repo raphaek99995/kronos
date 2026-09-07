@@ -1,11 +1,10 @@
-```python
 """
 Kronos inference service.
 
 FastAPI wrapper around the OFFICIAL Kronos model.
 
-The inference itself runs in a worker thread so the FastAPI event loop
-remains responsive while Kronos performs CPU/GPU inference.
+Kronos inference runs in a worker thread so the FastAPI event loop
+remains responsive while the model performs CPU/GPU inference.
 """
 
 from __future__ import annotations
@@ -63,8 +62,6 @@ _state = {
     "loaded_at": None,
 }
 
-# Kronos predictor is protected because model inference should not run
-# concurrently on the same model instance.
 _predict_lock = threading.Lock()
 
 
@@ -127,29 +124,21 @@ class CandleIn(BaseModel):
         ...,
         description="epoch milliseconds (candle open time)",
     )
-
     open: float
     high: float
     low: float
     close: float
     volume: float
-
     amount: Optional[float] = None
 
 
 class PredictRequest(BaseModel):
     candles: List[CandleIn]
-
     pred_len: int = 24
-
     interval_ms: int
-
     T: float = 1.0
-
     top_k: int = 0
-
     top_p: float = 0.9
-
     sample_count: int = 1
 
 
@@ -159,6 +148,7 @@ async def root():
         "service": "kronos",
         "status": _state["status"],
         "version": "2.0.0",
+        "async_inference": True,
     }
 
 
@@ -177,7 +167,7 @@ async def health():
 
 def _run_prediction(req: PredictRequest):
     """
-    Runs the heavy Kronos inference outside the FastAPI event loop.
+    Executes the heavy Kronos inference in a worker thread.
     """
 
     rows = sorted(
@@ -243,7 +233,6 @@ def _run_prediction(req: PredictRequest):
 
     started = time.time()
 
-    # Only the model inference is serialized.
     with _predict_lock:
 
         predictor = _state["predictor"]
@@ -324,10 +313,6 @@ async def predict(req: PredictRequest):
 
     try:
 
-        # IMPORTANT:
-        # Kronos inference is CPU/GPU intensive.
-        # asyncio.to_thread prevents it from blocking
-        # the FastAPI event loop.
         result = await asyncio.to_thread(
             _run_prediction,
             req,
@@ -344,4 +329,4 @@ async def predict(req: PredictRequest):
                 f"{type(exc).__name__}: {exc}"
             ),
         ) from exc
-```
+
