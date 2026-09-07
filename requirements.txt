@@ -1,14 +1,15 @@
-# Official Kronos requirements (from shiyu-coder/Kronos requirements.txt)
-numpy
+# Versão enxuta (CPU-only) para caber em 512 MB de RAM (Render grátis).
+# O torch é instalado via Dockerfile a partir do índice CPU:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+numpy<2
 pandas==2.2.2
-torch>=2.0.0
 einops==0.8.1
 huggingface_hub==0.33.1
-matplotlib==3.9.3
 tqdm==4.67.1
 safetensors==0.6.2
 
 # Service wrapper
 fastapi==0.115.6
-uvicorn[standard]==0.34.0
+uvicorn==0.34.0
 pydantic==2.10.4
